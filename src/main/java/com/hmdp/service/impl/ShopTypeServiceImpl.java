@@ -35,7 +35,9 @@ public class ShopTypeServiceImpl extends ServiceImpl<ShopTypeMapper, ShopType> i
         List<String> cacheList = stringRedisTemplate.opsForList().range(RedisConstants.SHOP_TYPE_KEY, 0, -1);
         // Redis中有数据，直接返回
         if(cacheList != null && !cacheList.isEmpty()){
-            return Result.ok(cacheList);
+            return Result.ok(cacheList.stream()
+                                        .map(string -> JSONUtil.toBean(string, ShopType.class))
+                                        .collect(Collectors.toList()));
         }
         // Redis中没有数据，去mysql中查询
         List<ShopType> shopTypeList = query().orderByAsc("sort").list();
