@@ -20,4 +20,7 @@ public interface IVoucherOrderService extends IService<VoucherOrder> {
      * @return
      */
     Result seckollVouncher(Long voucherId);
+
+
+    Result createVouncherOrder(Long voucherId);
 }
