@@ -35,9 +35,16 @@ public class ShopTypeServiceImpl extends ServiceImpl<ShopTypeMapper, ShopType> i
         List<String> cacheList = stringRedisTemplate.opsForList().range(RedisConstants.SHOP_TYPE_KEY, 0, -1);
         // Redis中有数据，直接返回
         if(cacheList != null && !cacheList.isEmpty()){
-            return Result.ok(cacheList.stream()
-                                        .map(string -> JSONUtil.toBean(string, ShopType.class))
-                                        .collect(Collectors.toList()));
+            List<ShopType> list = cacheList.stream()
+                    // 过滤掉空串、"{}"等无效数据，避免脏数据导致整个列表反序列化失败
+                    .filter(s -> s != null && !s.trim().isEmpty() && !"{}".equals(s.trim()))
+                    .map(s -> JSONUtil.toBean(s, ShopType.class))
+                    .collect(Collectors.toList());
+            // 缓存中没有有效数据（已被脏数据污染），删除缓存，回落到数据库查询
+            if(!list.isEmpty()){
+                return Result.ok(list);
+            }
+            stringRedisTemplate.delete(RedisConstants.SHOP_TYPE_KEY);
         }
         // Redis中没有数据，去mysql中查询
         List<ShopType> shopTypeList = query().orderByAsc("sort").list();
@@ -45,7 +52,8 @@ public class ShopTypeServiceImpl extends ServiceImpl<ShopTypeMapper, ShopType> i
         if(shopTypeList == null || shopTypeList.isEmpty()){
             return Result.fail("查询不到该数据");
         }
-        // mysql中有数据，把数据写入Redis
+        // mysql中有数据，先清空旧的缓存，再写入Redis（避免旧数据残留导致列表重复）
+        stringRedisTemplate.delete(RedisConstants.SHOP_TYPE_KEY);
         List<String> list1Json = shopTypeList.stream().map(JSONUtil::toJsonStr).collect(Collectors.toList());
         stringRedisTemplate.opsForList().rightPushAll(RedisConstants.SHOP_TYPE_KEY , list1Json);
         // 返回list数据

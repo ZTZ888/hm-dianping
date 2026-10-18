@@ -19,8 +19,8 @@ public interface IVoucherOrderService extends IService<VoucherOrder> {
      * @param voucherId
      * @return
      */
-    Result seckollVouncher(Long voucherId);
+    Result seckollVouncher(Long voucherId) throws InterruptedException;
 
 
-    Result createVouncherOrder(Long voucherId);
+    void createVouncherOrder(VoucherOrder voucherId);
 }

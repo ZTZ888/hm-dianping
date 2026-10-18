@@ -6,6 +6,8 @@ import com.hmdp.utils.CacheClient;
 import com.hmdp.utils.RedisConstants;
 import com.hmdp.utils.RedisIdWorker;
 import org.junit.jupiter.api.Test;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import javax.annotation.Resource;
@@ -23,6 +25,8 @@ class HmDianPingApplicationTests {
     private CacheClient cacheClient;
     @Resource
     private RedisIdWorker redisIdWorker;
+    @Resource
+    private RedissonClient redissonClient;
     // 建立线程池
     private ExecutorService es = Executors.newFixedThreadPool(500);
 
@@ -56,6 +60,17 @@ class HmDianPingApplicationTests {
         long end = System.currentTimeMillis();
         long time = end - start;
         System.out.println("用时为：" + time);
+    }
+
+    @Test
+    void testRedisson() throws InterruptedException {
+        RLock lock = redissonClient.getLock("anyLock");
+        // 获取锁，参数：获取锁的maxTime，锁自动unlockTime，单位
+        boolean tryLock = lock.tryLock(1, 10, TimeUnit.SECONDS);
+        if(tryLock){
+            System.out.println("成功获取到锁");
+            lock.unlock();
+        }
     }
 
 }
