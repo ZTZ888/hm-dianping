@@ -14,15 +14,20 @@ import com.hmdp.service.IUserService;
 import com.hmdp.utils.RedisConstants;
 import com.hmdp.utils.RegexUtils;
 import com.hmdp.utils.SystemConstants;
+import com.hmdp.utils.UserHolder;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
+import org.springframework.data.redis.connection.BitFieldSubCommands;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpSession;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -115,6 +120,68 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
         // 5.4 把token返回到前端
         return Result.ok(token);
+    }
+
+    /**
+     * 用户签到
+     * @return
+     */
+    @Override
+    public Result sign() {
+        // 获取当前用户信息
+        Long userID = UserHolder.getUser().getId();
+        // 获取当前签到的日期
+        LocalDateTime now = LocalDateTime.now();
+        // 拼接key
+        String key = USER_SIGN_KEY + userID + now.format(DateTimeFormatter .ofPattern(":yyyyMM"));
+
+        // 获取今日是本月的第几天
+        int day = now.getDayOfMonth();
+        // 写入bitmap
+        stringRedisTemplate.opsForValue().setBit(key, day - 1, true);
+
+        return Result.ok();
+    }
+
+    @Override
+    public Result signCount() {
+        // 首先获取用户信息，找到对应的用户存在redis中的签到信息
+        Long userID = UserHolder.getUser().getId();
+        // 拼接key
+        String key = USER_SIGN_KEY + userID + LocalDateTime.now().format(DateTimeFormatter .ofPattern(":yyyyMM"));
+        // 获取今日是本月的第几天
+        int day = LocalDateTime.now().getDayOfMonth();
+        // 从redis中获取bitmap，返回的是一个十进制的数字
+        List<Long> longs = stringRedisTemplate.opsForValue().bitField(
+                key,
+                BitFieldSubCommands.create()
+                        .get(BitFieldSubCommands.BitFieldType.unsigned(day)).valueAt(0)
+        );
+        if(longs == null ||longs.isEmpty()){
+            return Result.ok(0L);
+        }
+
+        // 十进制的值转换成二进制
+        long signCount = longs.get(0);
+        if(signCount == 0){
+            return Result.ok(0L);
+        }
+
+        int count = 0;
+        while(true){
+            // 1.1 如果是0，直接跳出循环
+            if ((signCount & 1) == 0) {
+                break;
+            }
+            // 1.2 如果是1，计数器加1
+            else{
+                count++;
+            }
+            // 1.3 无符号右移1位，继续判断
+            signCount = signCount >> 1;
+        }
+
+        return Result.ok(count);
     }
 
     private User createUserWithPhone(String phone) {

@@ -27,7 +27,7 @@ if redis.call('sismember', orderKey, userId)  == 1 then
 end
 
 -- 3.预扣减库存
-redis.call('incrBy', stockKey, -1)
+redis.call('incrBy', stockKey, -1);
 
 -- 4.将userId存入当前优惠券的set集合（set可以保证存入的value唯一）
 redis.call('sadd', orderKey, userId);

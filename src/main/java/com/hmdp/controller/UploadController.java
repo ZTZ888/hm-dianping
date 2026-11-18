@@ -3,11 +3,14 @@ package com.hmdp.controller;
 import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.StrUtil;
 import com.hmdp.dto.Result;
+import com.hmdp.entity.Blog;
+import com.hmdp.service.IBlogService;
 import com.hmdp.utils.SystemConstants;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.annotation.Resource;
 import java.io.File;
 import java.io.IOException;
 import java.util.UUID;
@@ -20,16 +23,33 @@ public class UploadController {
     @PostMapping("blog")
     public Result uploadImage(@RequestParam("file") MultipartFile image) {
         try {
-            // 获取原始文件名称
             String originalFilename = image.getOriginalFilename();
-            // 生成新文件名
             String fileName = createNewFileName(originalFilename);
-            // 保存文件
-            image.transferTo(new File(SystemConstants.IMAGE_UPLOAD_DIR, fileName));
-            // 返回结果
-            log.debug("文件上传成功，{}", fileName);
+
+            File dir = new File(SystemConstants.IMAGE_UPLOAD_DIR);
+            if (!dir.exists()) {
+                dir.mkdirs();
+            }
+
+            File dest = new File(SystemConstants.IMAGE_UPLOAD_DIR, fileName);
+
+            // Windows 下一定要确保是绝对路径
+            if (!dest.isAbsolute()) {
+                dest = dest.getAbsoluteFile();
+            }
+
+            // 确保父目录存在，例如 blogs/10/1/
+            File parentDir = dest.getParentFile();
+            if (parentDir != null && !parentDir.exists()) {
+                parentDir.mkdirs();
+            }
+
+            image.transferTo(dest);
+
+            log.info("文件上传成功，路径：{}", dest.getAbsolutePath());
             return Result.ok(fileName);
         } catch (IOException e) {
+            log.error("文件上传失败，fileName={}", createNewFileName(image.getOriginalFilename()), e);
             throw new RuntimeException("文件上传失败", e);
         }
     }

@@ -2,9 +2,11 @@ package com.hmdp.config;
 
 import com.hmdp.utils.LoginInterceptor;
 import com.hmdp.utils.RefreshTokenInterceptor;
+import com.hmdp.utils.SystemConstants;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import javax.annotation.Resource;
@@ -31,6 +33,12 @@ public class MvcConfig implements WebMvcConfigurer {
         // 配置REFRESH拦截器
         registry.addInterceptor(new RefreshTokenInterceptor(stringRedisTemplate)).order(0);
         // 拦截器的先后顺序，第一个是添加顺序，第二个是order，order越小，优先级越高
+    }
+
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+        registry.addResourceHandler("/imgs/**")
+                .addResourceLocations("file:" + SystemConstants.IMAGE_UPLOAD_DIR + "/");
     }
 
 }
